@@ -106,7 +106,7 @@ import {
 
 /* FIREBASE */
 const firebaseConfig = {
-  apiKey: "AIzaSyBjUx7G7Llqx6OGLcwRdixqyOBcXtN6f7A",
+  apiKey: "AIzaSy...",
   authDomain: "spyx-browser.firebaseapp.com",
   projectId: "spyx-browser"
 };
@@ -253,11 +253,11 @@ window.openCreate = async function () {
   `;
 };
 
-/* SAVE */
+/* SAVE (FIXED) */
 window.saveSpy = async function () {
   let docu = document.getElementById("viewer").contentWindow.document;
 
-  let name = docu.getElementById("name").value;
+  let name = docu.getElementById("name").value.trim();
   let content = docu.getElementById("content").value;
   let isPublic = docu.getElementById("public").checked;
 
@@ -269,15 +269,15 @@ window.saveSpy = async function () {
   await addDoc(collection(db, "sites"), {
     nombre: name,
     contenido: btoa(content),
-    public: isPublic,
+    public: Boolean(isPublic),
     likes: 0
   });
 
-  alert("Saved");
-  openManager();
+  alert("Saved ✔");
+  openPublic();
 };
 
-/* PUBLIC LIST */
+/* PUBLIC LIST (FIXED) */
 window.openPublic = async function () {
   showBrowser();
 
@@ -287,14 +287,23 @@ window.openPublic = async function () {
 
   snap.forEach(d => {
     let data = d.data();
-    if (data.public) {
-      sites.push({ id: d.id, ...data });
+
+    if (data.public === true) {
+      sites.push({
+        id: d.id,
+        nombre: data.nombre,
+        likes: data.likes || 0
+      });
     }
   });
 
   sites.sort((a, b) => b.likes - a.likes);
 
   let html = "<h2>🌍 Public .spy</h2>";
+
+  if (sites.length === 0) {
+    html += "<p>No public sites yet</p>";
+  }
 
   sites.forEach(s => {
     html += `
@@ -315,19 +324,22 @@ window.openPublic = async function () {
   document.getElementById("viewer").srcdoc = html;
 };
 
-/* LIKE */
+/* LIKE (FIXED) */
 window.likeSpy = async function(id) {
   const ref = doc(db, "sites", id);
 
   const snap = await getDocs(collection(db, "sites"));
 
+  let currentLikes = 0;
+
   snap.forEach(d => {
     if (d.id === id) {
-      let data = d.data();
-      updateDoc(ref, {
-        likes: (data.likes || 0) + 1
-      });
+      currentLikes = d.data().likes || 0;
     }
+  });
+
+  await updateDoc(ref, {
+    likes: currentLikes + 1
   });
 
   openPublic();
