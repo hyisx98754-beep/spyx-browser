@@ -7,20 +7,19 @@
   <style>
     body {
       margin: 0;
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       background: #0f172a;
       color: white;
     }
 
     #topbar {
-      display: flex;
-      gap: 8px;
+      display: none;
       padding: 10px;
       background: #020617;
-      align-items: center;
+      gap: 8px;
     }
 
-    #url {
+    #urlBar {
       flex: 1;
       padding: 10px;
       border-radius: 20px;
@@ -29,7 +28,7 @@
     }
 
     button {
-      padding: 10px 12px;
+      padding: 10px 14px;
       border-radius: 10px;
       border: none;
       cursor: pointer;
@@ -37,308 +36,205 @@
       font-weight: bold;
     }
 
-    #createBtn {
-      position: absolute;
-      right: 10px;
-      top: 55px;
-      background: #3b82f6;
-      color: white;
+    #home {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
     }
 
-    #home {
-      text-align: center;
-      padding: 40px;
+    .logo {
+      font-size: 42px;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
+    .searchBox {
+      width: 90%;
+      max-width: 500px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .searchBox input {
+      flex: 1;
+      padding: 14px;
+      border-radius: 30px;
+      border: none;
+      outline: none;
+      font-size: 16px;
+    }
+
+    .actions {
+      margin-top: 15px;
+      display: flex;
+      gap: 10px;
     }
 
     #viewer {
       width: 100%;
-      height: calc(100vh - 60px);
+      height: 100vh;
       border: none;
       display: none;
       background: white;
     }
 
-    .logo {
-      font-size: 32px;
-      margin-bottom: 10px;
+    .shortcut {
+      margin-top: 30px;
+      padding: 15px 25px;
+      border-radius: 15px;
+      background: #1e293b;
+      cursor: pointer;
     }
 
-    .link {
-      cursor: pointer;
-      color: #38bdf8;
+    .saveBtn {
+      margin-top: 10px;
+      background: #3b82f6;
     }
   </style>
 </head>
 
 <body>
 
+<!-- TOP BAR -->
 <div id="topbar">
-  <input id="url" placeholder="Search / URL / .spy">
-
+  <input id="urlBar">
   <button onclick="go()">Go</button>
-  <button onclick="openWiki()">Wikipedia</button>
-  <button onclick="openDirect()">URL</button>
-  <button onclick="openManager()">My .spy</button>
-  <button onclick="openPublic()">Public .spy</button>
 </div>
 
-<button id="createBtn" onclick="openCreate()">Create .spy</button>
-
+<!-- HOME -->
 <div id="home">
-  <div class="logo">SpyX Browser</div>
-  <p>Hybrid proxy browser system</p>
+  <div class="logo">SpyX</div>
+
+  <div class="searchBox">
+    <input id="search" placeholder="Search or type URL">
+  </div>
+
+  <div class="actions">
+    <button onclick="searchAuto()">Search</button>
+    <button onclick="searchURL()">URL</button>
+    <button onclick="searchWiki()">Wikipedia</button>
+  </div>
+
+  <div id="shortcutContainer"></div>
 </div>
 
 <iframe id="viewer"></iframe>
 
-<script type="module">
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  doc,
-  updateDoc
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-/* FIREBASE */
-const firebaseConfig = {
-  apiKey: "AIzaSyBjUx7G7Llqx6OGLcwRdixqyOBcXtN6f7A",
-  authDomain: "spyx-browser.firebaseapp.com",
-  projectId: "spyx-browser",
-  storageBucket: "spyx-browser.firebasestorage.app",
-  messagingSenderId: "496774958625",
-  appId: "1:496774958625:web:74284624e8a4c405071d60"
-};
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-/* PROXY */
+<script>
 const NODE_PROXY = "https://spyx-browser.onrender.com/proxy?url=";
 
-/* UI */
-function showBrowser() {
+/* UI SWITCH */
+function openBrowser() {
   document.getElementById("home").style.display = "none";
+  document.getElementById("topbar").style.display = "flex";
   document.getElementById("viewer").style.display = "block";
 }
 
-/* NAV */
-window.go = function () {
-  let input = document.getElementById("url").value.trim();
+/* SEARCH MODES */
+function searchAuto() {
+  let input = document.getElementById("search").value.trim();
   if (!input) return;
 
-  showBrowser();
-
-  if (input.endsWith(".spy")) {
-    loadSpy(input);
-    return;
-  }
-
   if (input.includes(".")) {
-    openDirect();
-    return;
+    loadURL(input);
+  } else {
+    loadWiki(input);
   }
+}
 
-  openWiki();
-};
+function searchURL() {
+  let input = document.getElementById("search").value.trim();
+  if (!input) return;
+  loadURL(input);
+}
 
-/* URL */
-window.openDirect = function () {
-  let url = document.getElementById("url").value.trim();
+function searchWiki() {
+  let input = document.getElementById("search").value.trim();
+  if (!input) return;
+  loadWiki(input);
+}
+
+/* LOADERS */
+function loadURL(url) {
+  openBrowser();
 
   if (!url.startsWith("http")) {
     url = "https://" + url;
   }
 
+  document.getElementById("urlBar").value = url;
+
   document.getElementById("viewer").src =
     NODE_PROXY + encodeURIComponent(url);
-};
+}
 
-/* WIKI */
-window.openWiki = function () {
-  let q = document.getElementById("url").value.trim();
+function loadWiki(q) {
+  openBrowser();
 
-  const url =
+  let url =
     "https://en.wikipedia.org/wiki/Special:Search?search=" +
     encodeURIComponent(q);
 
+  document.getElementById("urlBar").value = q;
+
   document.getElementById("viewer").src =
     NODE_PROXY + encodeURIComponent(url);
-};
-
-/* LOAD .spy */
-async function loadSpy(name) {
-  const snap = await getDocs(collection(db, "sites"));
-
-  snap.forEach(d => {
-    let data = d.data();
-
-    if (data.nombre === name) {
-      let html = atob(data.contenido);
-
-      document.getElementById("viewer").srcdoc = `
-        <html>
-        <body style="font-family:Arial;padding:20px;">
-          ${html}
-        </body>
-        </html>
-      `;
-    }
-  });
 }
 
-/* MANAGER */
-window.openManager = async function () {
-  showBrowser();
+/* GO FROM TOPBAR */
+function go() {
+  let input = document.getElementById("urlBar").value.trim();
+  if (!input) return;
 
-  const snap = await getDocs(collection(db, "sites"));
+  if (input.includes(".")) {
+    loadURL(input);
+  } else {
+    loadWiki(input);
+  }
+}
 
-  let html = "<h2>My .spy sites</h2>";
+/* ⭐ SHORTCUT (1 SLOT) */
+function saveShortcut() {
+  let current = document.getElementById("urlBar").value;
+  if (!current) return;
 
-  snap.forEach(d => {
-    let data = d.data();
+  localStorage.setItem("shortcut", current);
+  loadShortcut();
+}
 
-    html += `
-      <p class="link" onclick="parent.openSpy('${data.nombre}')">
-        ${data.nombre}
-      </p>
-      <button onclick="parent.deleteSpy('${d.id}')">Delete</button>
-      <hr>
-    `;
-  });
+function loadShortcut() {
+  let s = localStorage.getItem("shortcut");
 
-  document.getElementById("viewer").srcdoc = html;
-};
+  let container = document.getElementById("shortcutContainer");
 
-window.openSpy = function(name) {
-  document.getElementById("url").value = name;
-  loadSpy(name);
-};
-
-/* DELETE */
-window.deleteSpy = async function(id) {
-  await deleteDoc(doc(db, "sites", id));
-  alert("Deleted");
-  openManager();
-};
-
-/* CREATE */
-window.openCreate = async function () {
-  showBrowser();
-
-  const snap = await getDocs(collection(db, "sites"));
-
-  if (snap.size >= 2) {
-    alert("Max 2 .spy sites allowed");
+  if (!s) {
+    container.innerHTML = "";
     return;
   }
 
-  document.getElementById("viewer").srcdoc = `
-    <html>
-    <body style="font-family:Arial;background:#0f172a;color:white;padding:20px;">
-      <h2>Create .spy</h2>
-
-      <input id="name" placeholder="name.spy"><br><br>
-
-      <textarea id="content"></textarea><br><br>
-
-      <label>
-        <input type="checkbox" id="public"> Public
-      </label><br><br>
-
-      <button onclick="parent.saveSpy()">Save</button>
-    </body>
-    </html>
+  container.innerHTML = `
+    <div class="shortcut" onclick="loadURL('${s}')">
+      ⭐ ${s}
+    </div>
+    <button class="saveBtn" onclick="clearShortcut()">Remove</button>
   `;
-};
+}
 
-/* SAVE (FIXED) */
-window.saveSpy = async function () {
-  let docu = document.getElementById("viewer").contentWindow.document;
+function clearShortcut() {
+  localStorage.removeItem("shortcut");
+  loadShortcut();
+}
 
-  let name = docu.getElementById("name").value.trim();
-  let content = docu.getElementById("content").value;
-  let isPublic = docu.getElementById("public").checked;
+/* AUTO LOAD */
+loadShortcut();
 
-  if (!name.endsWith(".spy")) {
-    alert("Must end in .spy");
-    return;
-  }
-
-  await addDoc(collection(db, "sites"), {
-    nombre: name,
-    contenido: btoa(content),
-    public: Boolean(isPublic),
-    likes: 0
-  });
-
-  alert("Saved ✔");
-  openPublic();
-};
-
-/* PUBLIC LIST (FIXED) */
-window.openPublic = async function () {
-  showBrowser();
-
-  const snap = await getDocs(collection(db, "sites"));
-
-  let sites = [];
-
-  snap.forEach(d => {
-    let data = d.data();
-
-   if (data.public) {
-      sites.push({
-        id: d.id,
-        nombre: data.nombre,
-        likes: data.likes || 0
-      });
-    }
-  });
-
-  sites.sort((a, b) => b.likes - a.likes);
-
-  let html = "<h2>🌍 Public .spy</h2>";
-
-  if (sites.length === 0) {
-    html += "<p>No public sites yet</p>";
-  }
-
-  sites.forEach(s => {
-    html += `
-      <div style="margin-bottom:15px;">
-        <p class="link" onclick="parent.openSpy('${s.nombre}')">
-          ${s.nombre}
-        </p>
-
-        ❤️ ${s.likes}
-
-        <button onclick="parent.likeSpy('${s.id}')">
-          Like
-        </button>
-      </div>
-    `;
-  });
-
-  document.getElementById("viewer").srcdoc = html;
-};
-
-/* LIKE (FIXED) */
-import { increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-window.likeSpy = async function(id) {
-  const ref = doc(db, "sites", id);
-
-  await updateDoc(ref, {
-    likes: increment(1)
-  });
-
-  openPublic();
-};
-
+/* SAVE BUTTON IN TOPBAR */
+const saveBtn = document.createElement("button");
+saveBtn.innerText = "⭐";
+saveBtn.onclick = saveShortcut;
+document.getElementById("topbar").appendChild(saveBtn);
 </script>
 
 </body>
