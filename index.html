@@ -122,14 +122,18 @@ async function cargarSpy(nombre) {
 
     if (data.nombre === nombre) {
       viewer.innerHTML = `
-        <h2>${data.nombre}</h2>
+  <div style="background:white; color:black; padding:10px;">
+    ${data.contenido}
+  </div>
 
-        <textarea id="edit">${data.contenido}</textarea><br><br>
+  <hr>
 
-        <button onclick="guardar('${docu.id}')">Guardar</button>
-        <button onclick="borrar('${docu.id}')">Eliminar</button>
+  <textarea id="edit" style="width:100%;height:150px;">${data.contenido}</textarea><br><br>
+
+  <button onclick="guardar('${docu.id}')">Guardar</button>
+  <button onclick="borrar('${docu.id}')">Eliminar</button>
+`;
         <button onclick="abrirCrear()">Volver</button>
-      `;
       encontrado = true;
     }
   });
