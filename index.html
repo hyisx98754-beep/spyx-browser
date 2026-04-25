@@ -18,6 +18,7 @@
       padding: 10px;
       background: #020617;
       align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
     }
 
     #url {
@@ -26,6 +27,7 @@
       border-radius: 25px;
       border: none;
       outline: none;
+      font-size: 14px;
     }
 
     button {
@@ -35,11 +37,35 @@
       cursor: pointer;
       background: #22c55e;
       font-weight: bold;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      background: #16a34a;
     }
 
     #home {
       text-align: center;
       padding: 40px;
+    }
+
+    .logo {
+      font-size: 36px;
+      margin-bottom: 5px;
+    }
+
+    .slogan {
+      opacity: 0.7;
+      margin-bottom: 25px;
+    }
+
+    #quick {
+      margin-top: 20px;
+    }
+
+    #quick button {
+      background: #3b82f6;
     }
 
     #viewer {
@@ -48,11 +74,6 @@
       border: none;
       display: none;
       background: white;
-    }
-
-    .logo {
-      font-size: 32px;
-      margin-bottom: 10px;
     }
   </style>
 </head>
@@ -63,14 +84,22 @@
   <input id="url" placeholder="Search / URL / .spy">
 
   <button onclick="go()">Go</button>
-  <button onclick="openWiki()">Wikipedia</button>
+  <button onclick="openWiki()">Wiki</button>
   <button onclick="openDirect()">URL</button>
+  <button onclick="openDuck()">Duck</button>
   <button onclick="openManager()">My .spy</button>
   <button onclick="openPublic()">Public</button>
 </div>
 
 <div id="home">
-  <div class="logo">SpyX Browser</div>
+  <div class="logo">🕶️ SpyX</div>
+  <div class="slogan">Private • Fast • Unlimited .spy</div>
+
+  <div id="quick">
+    <p>Quick Access</p>
+    <button onclick="openQuick()">Open Saved Site</button>
+    <button onclick="saveQuick()">Save Current</button>
+  </div>
 </div>
 
 <iframe id="viewer"></iframe>
@@ -89,7 +118,7 @@ import {
   increment
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* 🔥 TU FIREBASE REAL (NO CAMBIAR) */
+/* FIREBASE (NO TOCADO) */
 const firebaseConfig = {
   apiKey: "AIzaSyBjUx7G7Llqx6OGLcwRdixqyOBcXtN6f7A",
   authDomain: "spyx-browser.firebaseapp.com",
@@ -102,7 +131,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* PROXY */
 const NODE_PROXY = "https://spyx-browser.onrender.com/proxy?url=";
 
 /* UI */
@@ -111,83 +139,73 @@ function showBrowser() {
   document.getElementById("viewer").style.display = "block";
 }
 
-/* 🔥 NAV (FIXED) */
+/* NAV */
 window.go = function () {
-  let input = document.getElementById("url").value.trim();
+  let input = url.value.trim();
   if (!input) return;
 
-  if (input.endsWith(".spy")) {
-    loadSpy(input);
-  } else if (input.includes(".")) {
-    openDirect();
-  } else {
-    openWiki();
-  }
+  if (input.endsWith(".spy")) return loadSpy(input);
+  if (input.includes(".")) return openDirect();
+  openWiki();
 };
 
-/* ✅ URL */
+/* URL */
 window.openDirect = function () {
-  let url = document.getElementById("url").value.trim();
-  if (!url) return;
+  let u = url.value.trim();
+  if (!u) return;
+
+  if (!u.startsWith("http")) u = "https://" + u;
 
   showBrowser();
-
-  if (!url.startsWith("http")) {
-    url = "https://" + url;
-  }
-
-  document.getElementById("viewer").src =
-    NODE_PROXY + encodeURIComponent(url);
+  viewer.src = NODE_PROXY + encodeURIComponent(u);
 };
 
-/* ✅ WIKI */
+/* WIKI */
 window.openWiki = function () {
-  let q = document.getElementById("url").value.trim();
+  let q = url.value.trim();
   if (!q) return;
 
   showBrowser();
-
-  let url =
-    "https://en.wikipedia.org/wiki/Special:Search?search=" +
-    encodeURIComponent(q);
-
-  document.getElementById("viewer").src =
-    NODE_PROXY + encodeURIComponent(url);
+  viewer.src = NODE_PROXY + encodeURIComponent(
+    "https://en.wikipedia.org/wiki/Special:Search?search=" + q
+  );
 };
 
-/* ✅ LOAD .spy */
+/* DUCK */
+window.openDuck = function () {
+  let q = url.value.trim();
+  if (!q) return;
+
+  window.open("https://duckduckgo.com/?q=" + encodeURIComponent(q), "_blank");
+};
+
+/* .spy */
 async function loadSpy(name) {
   showBrowser();
 
   const snap = await getDocs(collection(db, "sites"));
-
   let found = false;
 
   snap.forEach(d => {
     let data = d.data();
-
     if (data.nombre === name) {
-      document.getElementById("viewer").srcdoc = atob(data.contenido);
+      viewer.srcdoc = atob(data.contenido);
       found = true;
     }
   });
 
-  if (!found) {
-    document.getElementById("viewer").srcdoc = "<h2>.spy not found</h2>";
-  }
+  if (!found) viewer.srcdoc = "<h2>.spy not found</h2>";
 }
 
-/* ✅ MANAGER */
+/* MANAGER */
 window.openManager = async function () {
   showBrowser();
 
   const snap = await getDocs(collection(db, "sites"));
-
   let html = "<h2>My .spy</h2>";
 
   snap.forEach(d => {
     let data = d.data();
-
     html += `
       <p onclick="parent.openSpy('${data.nombre}')">${data.nombre}</p>
       <button onclick="parent.deleteSpy('${d.id}')">Delete</button>
@@ -195,27 +213,25 @@ window.openManager = async function () {
     `;
   });
 
-  document.getElementById("viewer").srcdoc = html;
+  viewer.srcdoc = html;
 };
 
 window.openSpy = function(name) {
-  document.getElementById("url").value = name;
+  url.value = name;
   loadSpy(name);
 };
 
-/* DELETE */
 window.deleteSpy = async function(id) {
   await deleteDoc(doc(db, "sites", id));
   openManager();
 };
 
-/* ✅ PUBLIC */
+/* PUBLIC */
 window.openPublic = async function () {
   showBrowser();
 
   const snap = await getDocs(collection(db, "sites"));
-
-  let html = "<h2>Public .spy</h2>";
+  let html = "<h2>🌍 Public .spy</h2>";
 
   snap.forEach(d => {
     let data = d.data();
@@ -230,14 +246,31 @@ window.openPublic = async function () {
     }
   });
 
-  document.getElementById("viewer").srcdoc = html;
+  viewer.srcdoc = html;
 };
 
-/* ✅ LIKE (FIXED REAL) */
+/* LIKE */
 window.likeSpy = async function(id) {
   const ref = doc(db, "sites", id);
   await updateDoc(ref, { likes: increment(1) });
   openPublic();
+};
+
+/* ⭐ QUICK ACCESS (LOCAL) */
+window.saveQuick = function () {
+  let current = url.value.trim();
+  if (!current) return alert("Nothing to save");
+
+  localStorage.setItem("quick", current);
+  alert("Saved!");
+};
+
+window.openQuick = function () {
+  let saved = localStorage.getItem("quick");
+  if (!saved) return alert("No saved site");
+
+  url.value = saved;
+  go();
 };
 
 </script>
