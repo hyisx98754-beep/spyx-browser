@@ -79,6 +79,7 @@
   <button onclick="openWiki()">Wikipedia</button>
   <button onclick="openDirect()">URL</button>
   <button onclick="openManager()">My .spy</button>
+  <button onclick="openPublic()">Public .spy</button>
 </div>
 
 <button id="createBtn" onclick="openCreate()">Create .spy</button>
@@ -99,7 +100,8 @@ import {
   addDoc,
   getDocs,
   deleteDoc,
-  doc
+  doc,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 /* FIREBASE */
@@ -221,7 +223,7 @@ window.deleteSpy = async function(id) {
   openManager();
 };
 
-/* CREATE UI */
+/* CREATE */
 window.openCreate = async function () {
   showBrowser();
 
@@ -238,7 +240,12 @@ window.openCreate = async function () {
       <h2>Create .spy</h2>
 
       <input id="name" placeholder="name.spy"><br><br>
+
       <textarea id="content"></textarea><br><br>
+
+      <label>
+        <input type="checkbox" id="public"> Public
+      </label><br><br>
 
       <button onclick="parent.saveSpy()">Save</button>
     </body>
@@ -252,6 +259,7 @@ window.saveSpy = async function () {
 
   let name = docu.getElementById("name").value;
   let content = docu.getElementById("content").value;
+  let isPublic = docu.getElementById("public").checked;
 
   if (!name.endsWith(".spy")) {
     alert("Must end in .spy");
@@ -260,11 +268,69 @@ window.saveSpy = async function () {
 
   await addDoc(collection(db, "sites"), {
     nombre: name,
-    contenido: btoa(content)
+    contenido: btoa(content),
+    public: isPublic,
+    likes: 0
   });
 
   alert("Saved");
   openManager();
+};
+
+/* PUBLIC LIST */
+window.openPublic = async function () {
+  showBrowser();
+
+  const snap = await getDocs(collection(db, "sites"));
+
+  let sites = [];
+
+  snap.forEach(d => {
+    let data = d.data();
+    if (data.public) {
+      sites.push({ id: d.id, ...data });
+    }
+  });
+
+  sites.sort((a, b) => b.likes - a.likes);
+
+  let html = "<h2>🌍 Public .spy</h2>";
+
+  sites.forEach(s => {
+    html += `
+      <div style="margin-bottom:15px;">
+        <p class="link" onclick="parent.openSpy('${s.nombre}')">
+          ${s.nombre}
+        </p>
+
+        ❤️ ${s.likes}
+
+        <button onclick="parent.likeSpy('${s.id}')">
+          Like
+        </button>
+      </div>
+    `;
+  });
+
+  document.getElementById("viewer").srcdoc = html;
+};
+
+/* LIKE */
+window.likeSpy = async function(id) {
+  const ref = doc(db, "sites", id);
+
+  const snap = await getDocs(collection(db, "sites"));
+
+  snap.forEach(d => {
+    if (d.id === id) {
+      let data = d.data();
+      updateDoc(ref, {
+        likes: (data.likes || 0) + 1
+      });
+    }
+  });
+
+  openPublic();
 };
 
 </script>
