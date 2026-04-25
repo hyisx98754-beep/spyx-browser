@@ -6,109 +6,164 @@
 
   <style>
     body {
-      background: #0a0a0a;
-      color: white;
-      font-family: Arial;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
       margin: 0;
+      font-family: Arial;
+      background: #111;
+      color: white;
     }
 
-    h1 {
-      font-size: 50px;
-      letter-spacing: 3px;
-      color: #00ffcc;
+    /* 🔝 Barra superior */
+    #topbar {
+      display: flex;
+      background: #1a1a1a;
+      padding: 10px;
+      align-items: center;
+      gap: 5px;
     }
 
-    input {
-      width: 60%;
-      padding: 15px;
-      border-radius: 30px;
+    #url {
+      flex: 1;
+      padding: 8px;
+      border-radius: 5px;
       border: none;
       outline: none;
-      font-size: 16px;
-      text-align: center;
-      margin-top: 20px;
     }
 
     button {
-      margin-top: 15px;
-      padding: 10px 20px;
-      border-radius: 20px;
-      border: none;
+      padding: 8px;
       cursor: pointer;
-      background: #00ffcc;
-      color: black;
-      font-weight: bold;
-    }
-
-    iframe {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
       border: none;
-      display: none;
+      border-radius: 5px;
+      background: #333;
+      color: white;
     }
 
-    #topbar {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      display: none;
+    button:hover {
+      background: #555;
     }
 
-    #topbar button {
+    /* 🗂️ pestañas */
+    #tabs {
+      display: flex;
+      background: #000;
+      padding: 5px;
+      overflow-x: auto;
+    }
+
+    .tab {
+      padding: 5px 10px;
+      background: #222;
       margin-right: 5px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .active {
+      background: #00aa88;
+    }
+
+    /* 🌐 contenido */
+    iframe {
+      width: 100%;
+      height: calc(100vh - 90px);
+      border: none;
     }
   </style>
 </head>
 
 <body>
 
-<h1>🕶️ SpyX</h1>
+<!-- 🗂️ pestañas -->
+<div id="tabs"></div>
 
-<input type="text" id="busqueda" placeholder="Buscar o escribir URL">
-<button onclick="buscar()">Explorar</button>
-
+<!-- 🔝 barra -->
 <div id="topbar">
   <button onclick="volver()">⬅️</button>
-  <button onclick="inicio()">🏠</button>
+  <button onclick="adelante()">➡️</button>
+  <button onclick="recargar()">🔄</button>
+
+  <input id="url" placeholder="Buscar o escribir URL">
+
+  <button onclick="ir()">Ir</button>
+  <button onclick="nuevaTab()">➕</button>
 </div>
 
+<!-- 🌐 visor -->
 <iframe id="visor"></iframe>
 
 <script>
 
-function buscar() {
-  let input = document.getElementById("busqueda").value;
+let pestañas = [];
+let actual = 0;
+
+/* 🔥 crear nueva pestaña */
+function nuevaTab() {
+  pestañas.push("https://duckduckgo.com");
+  actual = pestañas.length - 1;
+  renderTabs();
+  cargar();
+}
+
+/* 🎯 render pestañas */
+function renderTabs() {
+  const cont = document.getElementById("tabs");
+  cont.innerHTML = "";
+
+  pestañas.forEach((url, i) => {
+    const tab = document.createElement("div");
+    tab.className = "tab " + (i === actual ? "active" : "");
+    tab.innerText = "Tab " + (i + 1);
+
+    tab.onclick = () => {
+      actual = i;
+      cargar();
+      renderTabs();
+    };
+
+    cont.appendChild(tab);
+  });
+}
+
+/* 🌐 cargar página */
+function cargar() {
+  document.getElementById("visor").src = pestañas[actual];
+  document.getElementById("url").value = pestañas[actual];
+}
+
+/* 🔍 ir a URL */
+function ir() {
+  let input = document.getElementById("url").value;
 
   if (!input.startsWith("http")) {
     input = "https://duckduckgo.com/?q=" + encodeURIComponent(input);
   }
 
-  document.getElementById("visor").src = input;
-  document.getElementById("visor").style.display = "block";
+  pestañas[actual] = input;
 
-  document.body.style.justifyContent = "flex-start";
-  document.querySelector("h1").style.display = "none";
-  document.getElementById("busqueda").style.display = "none";
-  document.querySelector("button").style.display = "none";
-
-  document.getElementById("topbar").style.display = "block";
+  // ⚠️ muchos sitios bloquean iframe
+  // fallback: abrir en pestaña real
+  try {
+    document.getElementById("visor").src = input;
+  } catch {
+    window.open(input, "_blank");
+  }
 }
 
+/* navegación */
 function volver() {
   document.getElementById("visor").contentWindow.history.back();
 }
 
-function inicio() {
-  location.reload();
+function adelante() {
+  document.getElementById("visor").contentWindow.history.forward();
 }
+
+function recargar() {
+  document.getElementById("visor").contentWindow.location.reload();
+}
+
+/* iniciar */
+nuevaTab();
 
 </script>
 
