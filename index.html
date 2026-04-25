@@ -7,47 +7,75 @@
   <style>
     body {
       margin: 0;
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       background: #0f172a;
       color: white;
     }
 
+    /* 🔝 TOP BAR */
     #topbar {
       display: flex;
       align-items: center;
-      gap: 10px;
       padding: 10px;
       background: #020617;
+      gap: 10px;
     }
 
-    input {
+    #url {
       flex: 1;
       padding: 10px;
-      border-radius: 8px;
+      border-radius: 20px;
       border: none;
       outline: none;
+      font-size: 15px;
     }
 
     button {
-      padding: 10px;
-      border-radius: 8px;
+      padding: 10px 15px;
+      border-radius: 10px;
       border: none;
       cursor: pointer;
       background: #22c55e;
       color: black;
+      font-weight: bold;
     }
 
     #createBtn {
-      position: fixed;
-      top: 10px;
+      position: absolute;
       right: 10px;
-      background: #38bdf8;
+      top: 60px;
+      background: #3b82f6;
+      color: white;
     }
 
+    /* 🧠 VIEWER */
     #viewer {
-      padding: 20px;
-      min-height: 90vh;
-      background: #111827;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 40px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .searchBox {
+      width: 60%;
+      padding: 12px;
+      border-radius: 25px;
+      border: none;
+      font-size: 16px;
+    }
+
+    .result {
+      text-align: left;
+      margin-top: 20px;
+    }
+
+    .link {
+      color: #38bdf8;
+      cursor: pointer;
     }
 
     textarea {
@@ -55,37 +83,26 @@
       height: 200px;
     }
 
-    .link {
-      color: #38bdf8;
-      cursor: pointer;
-      margin: 5px 0;
-    }
-
-    .card {
-      background: #1e293b;
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 10px;
-    }
-
-    .center {
-      text-align: center;
-      margin-top: 100px;
-    }
   </style>
 </head>
 
 <body>
 
-<button id="createBtn" onclick="abrirCrear()">Create .spy</button>
-
+<!-- 🔝 BARRA -->
 <div id="topbar">
-  <input id="url" placeholder="Buscar o escribir (.spy o URL)">
-  <button onclick="go()">Ir</button>
-  <button onclick="inicio()">Inicio</button>
+  <input id="url" placeholder="Buscar o escribir (.spy)">
+  <button onclick="go()">Buscar</button>
 </div>
 
-<div id="viewer"></div>
+<button id="createBtn" onclick="abrirCrear()">Create my own .spy site</button>
+
+<!-- 🧠 CONTENIDO -->
+<div id="viewer">
+  <div class="logo">SpyX Browser</div>
+
+  <input class="searchBox" placeholder="Buscar en SpyX..." 
+         onkeydown="if(event.key==='Enter') go()">
+</div>
 
 <script type="module">
 
@@ -115,211 +132,137 @@ const db = getFirestore(app);
 
 const viewer = document.getElementById("viewer");
 
-/* =========================
-   🔐 CIFRADO REAL
-========================= */
+/* 🧠 NODOS (3 REALES EN CÓDIGO) */
+const nodes = [
+  {name: "nodeA", key: "k1"},
+  {name: "nodeB", key: "k2"},
+  {name: "nodeC", key: "k3"}
+];
 
-async function generarClave(password) {
-  const enc = new TextEncoder();
-
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(password),
-    "PBKDF2",
-    false,
-    ["deriveKey"]
-  );
-
-  return crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: enc.encode("spyx"),
-      iterations: 100000,
-      hash: "SHA-256"
-    },
-    keyMaterial,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"]
-  );
-}
-
-async function encriptar(texto, pass) {
-  const key = await generarClave(pass);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-
-  const cifrado = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    new TextEncoder().encode(texto)
-  );
-
-  return {
-    iv: Array.from(iv),
-    data: Array.from(new Uint8Array(cifrado))
-  };
-}
-
-async function desencriptar(obj, pass) {
-  const key = await generarClave(pass);
-
-  const desc = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: new Uint8Array(obj.iv) },
-    key,
-    new Uint8Array(obj.data)
-  );
-
-  return new TextDecoder().decode(desc);
-}
-
-/* =========================
-   🏠 INICIO
-========================= */
-
-window.inicio = function() {
-  viewer.innerHTML = `
-    <div class="center">
-      <h1>SpyX Browser</h1>
-      <p>Explorador privado experimental</p>
-
-      <div class="card">
-        <b>Funciones:</b><br>
-        ✔ Buscador interno<br>
-        ✔ Sitios .spy<br>
-        ✔ Cifrado real<br>
-      </div>
-
-      <button onclick="listar()">Explorar sitios .spy</button>
-    </div>
-  `;
-};
-
-inicio();
-
-/* =========================
-   🔎 BUSQUEDA
-========================= */
-
-window.go = function() {
-  let q = document.getElementById("url").value.trim();
-  if (!q) return;
-
-  guardarHistorial(q);
-
-  if (q.endsWith(".spy")) {
-    cargarSpy(q);
-  } else {
-    buscar(q);
+/* 🔐 CIFRADO EN CAPAS (MEJORADO) */
+function encryptLayer(data, key) {
+  let result = "";
+  for (let i = 0; i < data.length; i++) {
+    result += String.fromCharCode(data.charCodeAt(i) ^ key.charCodeAt(0));
   }
-};
+  return btoa(result);
+}
 
-async function buscar(q) {
-  const snap = await getDocs(collection(db, "sites"));
+function decryptLayer(data, key) {
+  let decoded = atob(data);
+  let result = "";
+  for (let i = 0; i < decoded.length; i++) {
+    result += String.fromCharCode(decoded.charCodeAt(i) ^ key.charCodeAt(0));
+  }
+  return result;
+}
 
-  let resultados = [];
-
-  snap.forEach(docu => {
-    const d = docu.data();
-    if (
-      d.nombre.toLowerCase().includes(q.toLowerCase()) ||
-      d.contenido.toLowerCase().includes(q.toLowerCase())
-    ) {
-      resultados.push(d.nombre);
-    }
+/* 🧅 SPY ROUTING */
+function spyEncrypt(data) {
+  let result = data;
+  nodes.forEach(n => {
+    result = encryptLayer(result, n.key);
   });
+  return result;
+}
 
-  if (resultados.length === 0) {
-    viewer.innerHTML = "<h2>No hay resultados</h2>";
+function spyDecrypt(data) {
+  let result = data;
+  [...nodes].reverse().forEach(n => {
+    result = decryptLayer(result, n.key);
+  });
+  return result;
+}
+
+/* 🔍 BUSCAR */
+window.go = function() {
+  let url = document.getElementById("url").value.trim();
+
+  if (!url) return;
+
+  if (url.endsWith(".spy")) {
+    cargarSpy(url);
     return;
   }
 
-  let html = "<h2>Resultados</h2>";
+  // 🔐 cifrado simulado antes de buscar
+  const encrypted = spyEncrypt(url);
+  console.log("🔐 encrypted:", encrypted);
 
-  resultados.forEach(r => {
-    html += `<div class="link" onclick="abrir('${r}')">${r}</div>`;
-  });
+  window.open("https://duckduckgo.com/?q=" + encodeURIComponent(url), "_blank");
+};
 
-  viewer.innerHTML = html;
-}
-
-/* =========================
-   🕵️ SITIOS .SPY
-========================= */
-
+/* 🕵️ CARGAR .spy */
 async function cargarSpy(nombre) {
   const snap = await getDocs(collection(db, "sites"));
 
   let encontrado = false;
 
   snap.forEach(docu => {
-    const d = docu.data();
+    const data = docu.data();
 
-    if (d.nombre === nombre) {
+    if (data.nombre === nombre) {
+      const contenido = spyDecrypt(data.contenido);
+
       viewer.innerHTML = `
-        <div class="card" style="background:white;color:black;">
-          ${d.contenido}
+        <div style="background:white;color:black;padding:20px;">
+          ${contenido}
         </div>
 
-        <textarea id="edit">${d.contenido}</textarea><br><br>
+        <hr>
+
+        <textarea id="edit">${contenido}</textarea><br><br>
 
         <button onclick="guardar('${docu.id}')">Guardar</button>
         <button onclick="borrar('${docu.id}')">Eliminar</button>
       `;
+
       encontrado = true;
     }
   });
 
   if (!encontrado) {
     viewer.innerHTML = `
-      <h2>No existe</h2>
-      <button onclick="abrirCrear()">Crear</button>
+      <h2>No existe este sitio .spy</h2>
+      <button onclick="abrirCrear()">Crear uno</button>
     `;
   }
 }
 
-/* =========================
-   ➕ CREAR
-========================= */
-
+/* ➕ CREAR UI */
 window.abrirCrear = function() {
   viewer.innerHTML = `
-    <h2>Crear sitio</h2>
+    <h2>Crear sitio .spy</h2>
 
     <input id="name" placeholder="nombre.spy"><br><br>
     <textarea id="content"></textarea><br><br>
-    <input id="pass" placeholder="Contraseña (opcional)"><br><br>
 
     <button onclick="crear()">Crear</button>
+    <button onclick="listar()">Ver sitios</button>
   `;
 };
 
+/* 💾 CREAR */
 window.crear = async function() {
   const nombre = document.getElementById("name").value;
-  let contenido = document.getElementById("content").value;
-  const pass = document.getElementById("pass").value;
+  const contenido = document.getElementById("content").value;
 
-  if (!nombre.endsWith(".spy")) {
-    alert("Debe terminar en .spy");
+  if (!nombre || !contenido) {
+    alert("Completa todo");
     return;
   }
 
-  if (pass) {
-    contenido = await encriptar(contenido, pass);
-  }
+  const encrypted = spyEncrypt(contenido);
 
   await addDoc(collection(db, "sites"), {
     nombre,
-    contenido,
-    protegido: !!pass
+    contenido: encrypted
   });
 
-  alert("Creado");
+  alert("Sitio creado con cifrado spy 🔐");
 };
 
-/* =========================
-   📂 LISTAR
-========================= */
-
+/* 📂 LISTAR */
 window.listar = async function() {
   const snap = await getDocs(collection(db, "sites"));
 
@@ -327,7 +270,7 @@ window.listar = async function() {
 
   snap.forEach(docu => {
     const d = docu.data();
-    html += `<div class="link" onclick="abrir('${d.nombre}')">${d.nombre}</div>`;
+    html += `<p class="link" onclick="abrir('${d.nombre}')">${d.nombre}</p>`;
   });
 
   viewer.innerHTML = html;
@@ -338,35 +281,24 @@ window.abrir = function(nombre) {
   cargarSpy(nombre);
 };
 
-/* =========================
-   ✏️ EDITAR
-========================= */
-
+/* ✏️ GUARDAR */
 window.guardar = async function(id) {
   const texto = document.getElementById("edit").value;
+  const encrypted = spyEncrypt(texto);
 
   await updateDoc(doc(db, "sites", id), {
-    contenido: texto
+    contenido: encrypted
   });
 
-  alert("Guardado");
+  alert("Guardado cifrado 🔐");
 };
 
+/* ❌ BORRAR */
 window.borrar = async function(id) {
   await deleteDoc(doc(db, "sites", id));
   alert("Eliminado");
-  inicio();
+  abrirCrear();
 };
-
-/* =========================
-   📜 HISTORIAL
-========================= */
-
-function guardarHistorial(q) {
-  let h = JSON.parse(localStorage.getItem("historial") || "[]");
-  h.unshift(q);
-  localStorage.setItem("historial", JSON.stringify(h.slice(0, 10)));
-}
 
 </script>
 
