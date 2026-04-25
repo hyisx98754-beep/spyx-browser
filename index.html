@@ -74,16 +74,19 @@
 <body>
 
 <div id="topbar">
-  <input id="url" placeholder="Search or URL or .spy">
+  <input id="url" placeholder="Search / URL / .spy">
+
   <button onclick="go()">Go</button>
+  <button onclick="openWiki()">Wikipedia</button>
+  <button onclick="openDirect()">URL</button>
 </div>
 
 <button id="createBtn" onclick="openCreate()">Create .spy</button>
 
 <div id="home">
   <div class="logo">SpyX Browser</div>
-  <p>Stable hybrid browser system</p>
-  <div class="status" id="status">Ready</div>
+  <p>Hybrid proxy browser system</p>
+  <div class="status">Ready</div>
 </div>
 
 <iframe id="viewer"></iframe>
@@ -98,7 +101,7 @@ import {
   getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* FIREBASE */
+/* 🔥 FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyBjUx7G7Llqx6OGLcwRdixqyOBcXtN6f7A",
   authDomain: "spyx-browser.firebaseapp.com",
@@ -111,13 +114,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* GATEWAY */
+/* 🌐 GATEWAY */
 const NODE_PROXY = "https://spyx-browser.onrender.com/proxy?url=";
-
-/* STATUS */
-function setStatus(msg) {
-  document.getElementById("status").innerText = msg;
-}
 
 /* UI */
 function showBrowser() {
@@ -125,43 +123,57 @@ function showBrowser() {
   document.getElementById("viewer").style.display = "block";
 }
 
-/* MAIN NAV */
+/* 🚀 MAIN NAV */
 window.go = function () {
   let input = document.getElementById("url").value.trim();
   if (!input) return;
 
   showBrowser();
 
-  /* .spy system */
   if (input.endsWith(".spy")) {
     loadSpy(input);
     return;
   }
 
-  /* URL detection */
-  if (input.includes(".") && !input.includes(" ")) {
-    setStatus("Loading site...");
-    loadSite(input);
+  if (input.includes(".")) {
+    openDirect();
     return;
   }
 
-  /* SEARCH fallback */
-  setStatus("Searching...");
-  document.getElementById("viewer").src =
-    "https://duckduckgo.com/?q=" + encodeURIComponent(input);
+  openWiki();
 };
 
-/* LOAD WEB VIA PROXY */
-function loadSite(url) {
-  try {
-    document.getElementById("viewer").src =
-      NODE_PROXY + encodeURIComponent(url);
-  } catch (e) {
-    setStatus("Error loading site");
-  }
-}
+/* 🌍 OPEN URL VIA PROXY */
+window.openDirect = function () {
+  let url = document.getElementById("url").value.trim();
+  if (!url) return;
 
-/* LOAD .spy */
+  showBrowser();
+
+  if (!url.startsWith("http")) {
+    url = "https://" + url;
+  }
+
+  document.getElementById("viewer").src =
+    NODE_PROXY + encodeURIComponent(url);
+};
+
+/* 📚 WIKIPEDIA SEARCH */
+window.openWiki = function () {
+  let q = document.getElementById("url").value.trim();
+  if (!q) return;
+
+  showBrowser();
+
+  const url =
+    "https://en.wikipedia.org/wiki/Special:Search?search=" +
+    encodeURIComponent(q);
+
+  document.getElementById("viewer").src =
+    NODE_PROXY + encodeURIComponent(url);
+};
+
+/* 🕵️ LOAD .spy */
 async function loadSpy(name) {
   const snap = await getDocs(collection(db, "sites"));
 
@@ -191,14 +203,14 @@ async function loadSpy(name) {
   }
 }
 
-/* CREATE */
+/* ➕ CREATE */
 window.openCreate = function () {
   showBrowser();
 
   document.getElementById("viewer").srcdoc = `
     <html>
     <body style="font-family:Arial;background:#0f172a;color:white;padding:20px;">
-      <h2>Create .spy</h2>
+      <h2>Create .spy site</h2>
 
       <input id="name" placeholder="name.spy" style="width:100%;padding:10px;"><br><br>
       <textarea id="content" style="width:100%;height:200px;"></textarea><br><br>
@@ -209,7 +221,7 @@ window.openCreate = function () {
   `;
 };
 
-/* SAVE */
+/* 💾 SAVE */
 window.saveSpy = async function () {
   let doc = document.getElementById("viewer").contentWindow.document;
 
@@ -226,7 +238,7 @@ window.saveSpy = async function () {
     contenido: btoa(content)
   });
 
-  alert("Saved");
+  alert("Saved .spy site");
 };
 
 </script>
