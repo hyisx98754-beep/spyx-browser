@@ -41,6 +41,13 @@ button {
 textarea {
   width:100%;
   height:150px;
+  margin-top:10px;
+}
+
+.spyItem {
+  border:1px solid #333;
+  padding:10px;
+  margin:10px 0;
 }
 </style>
 </head>
@@ -50,7 +57,7 @@ textarea {
 <div class="topbar">
   <input id="url" placeholder="Escribe URL o spy://...">
   <button onclick="abrir()">Abrir</button>
-  <button onclick="crearSpy()">+ Crear .spy</button>
+  <button onclick="irCrear()">Create my own .spy site</button>
 </div>
 
 <div id="visor">
@@ -60,11 +67,23 @@ textarea {
 
 <script>
 
+/* 🔹 IR A CREAR */
+function irCrear() {
+  document.getElementById("url").value = "createspyweb.spy";
+  abrir();
+}
+
 /* 🔓 ABRIR */
 function abrir() {
   let url = document.getElementById("url").value;
 
   if (!url) return;
+
+  // 🔥 PANEL DE CREACIÓN
+  if (url === "createspyweb.spy") {
+    mostrarPanel();
+    return;
+  }
 
   // 🌐 SITIO SPY
   if (url.startsWith("spy://")) {
@@ -88,19 +107,82 @@ function abrir() {
   window.open(url, "_blank");
 }
 
-/* ➕ CREAR SITIO SPY */
-function crearSpy() {
-  const nombre = prompt("Nombre del sitio (.spy):");
+/* 🧠 MOSTRAR PANEL */
+function mostrarPanel() {
+  let html = `
+    <h2>🛠 Crear sitios .spy</h2>
+    <input id="nombreSpy" placeholder="Nombre del sitio"><br>
+    <textarea id="contenidoSpy" placeholder="HTML del sitio"></textarea><br>
+    <button onclick="guardarSpy()">Guardar</button>
+    <hr>
+    <h3>📂 Tus sitios</h3>
+    <div id="lista"></div>
+  `;
 
-  if (!nombre) return;
+  document.getElementById("visor").innerHTML = html;
 
-  const contenido = prompt("Contenido HTML del sitio:");
+  cargarLista();
+}
 
-  if (!contenido) return;
+/* 💾 GUARDAR */
+function guardarSpy() {
+  const nombre = document.getElementById("nombreSpy").value;
+  const contenido = document.getElementById("contenidoSpy").value;
+
+  if (!nombre) return alert("Pon nombre");
 
   localStorage.setItem("spy_site_" + nombre, contenido);
 
-  alert("✅ Sitio creado:\nspy://" + nombre);
+  alert("✅ Guardado: spy://" + nombre);
+
+  cargarLista();
+}
+
+/* 📂 CARGAR LISTA */
+function cargarLista() {
+  const lista = document.getElementById("lista");
+  lista.innerHTML = "";
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+
+    if (key.startsWith("spy_site_")) {
+      const nombre = key.replace("spy_site_", "");
+      const contenido = localStorage.getItem(key);
+
+      lista.innerHTML += `
+        <div class="spyItem">
+          <b>spy://${nombre}</b><br>
+          <button onclick="abrirSpy('${nombre}')">Abrir</button>
+          <button onclick="editarSpy('${nombre}')">Editar</button>
+          <button onclick="eliminarSpy('${nombre}')">Eliminar</button>
+        </div>
+      `;
+    }
+  }
+}
+
+/* 🔓 ABRIR DESDE LISTA */
+function abrirSpy(nombre) {
+  document.getElementById("url").value = "spy://" + nombre;
+  abrir();
+}
+
+/* ✏️ EDITAR */
+function editarSpy(nombre) {
+  const contenido = localStorage.getItem("spy_site_" + nombre);
+
+  document.getElementById("nombreSpy").value = nombre;
+  document.getElementById("contenidoSpy").value = contenido;
+}
+
+/* 🗑 ELIMINAR */
+function eliminarSpy(nombre) {
+  if (!confirm("¿Eliminar spy://" + nombre + "?")) return;
+
+  localStorage.removeItem("spy_site_" + nombre);
+
+  cargarLista();
 }
 
 </script>
