@@ -14,18 +14,10 @@
 
     #topbar {
       display: flex;
+      align-items: center;
+      gap: 10px;
       padding: 10px;
       background: #020617;
-      gap: 10px;
-      align-items: center;
-    }
-
-    #createTop {
-      position: absolute;
-      right: 10px;
-      top: 10px;
-      background: #22c55e;
-      color: black;
     }
 
     input {
@@ -33,6 +25,7 @@
       padding: 10px;
       border-radius: 8px;
       border: none;
+      outline: none;
     }
 
     button {
@@ -44,14 +37,17 @@
       color: black;
     }
 
+    #createBtn {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: #38bdf8;
+    }
+
     #viewer {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
+      padding: 20px;
       min-height: 90vh;
       background: #111827;
-      flex-direction: column;
     }
 
     textarea {
@@ -59,31 +55,37 @@
       height: 200px;
     }
 
-    .box {
-      width: 90%;
-      max-width: 600px;
+    .link {
+      color: #38bdf8;
+      cursor: pointer;
+      margin: 5px 0;
     }
 
-    .link {
-      cursor: pointer;
-      color: #38bdf8;
+    .card {
+      background: #1e293b;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+    }
+
+    .center {
+      text-align: center;
+      margin-top: 100px;
     }
   </style>
 </head>
 
 <body>
 
-<button id="createTop" onclick="abrirCrear()">Create my own .spy site</button>
+<button id="createBtn" onclick="abrirCrear()">Create .spy</button>
 
 <div id="topbar">
-  <input id="url" placeholder="Buscar o escribir (.spy)">
+  <input id="url" placeholder="Buscar o escribir (.spy o URL)">
   <button onclick="go()">Ir</button>
+  <button onclick="inicio()">Inicio</button>
 </div>
 
-<div id="viewer">
-  <h1>SpyX Browser</h1>
-  <p>Explorador privado experimental</p>
-</div>
+<div id="viewer"></div>
 
 <script type="module">
 
@@ -98,6 +100,7 @@ import {
   deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+/* 🔥 FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyBjUx7G7Llqx6OGLcwRdixqyOBcXtN6f7A",
   authDomain: "spyx-browser.firebaseapp.com",
@@ -112,46 +115,155 @@ const db = getFirestore(app);
 
 const viewer = document.getElementById("viewer");
 
-/* 🔍 BUSCAR */
+/* =========================
+   🔐 CIFRADO REAL
+========================= */
+
+async function generarClave(password) {
+  const enc = new TextEncoder();
+
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveKey"]
+  );
+
+  return crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: enc.encode("spyx"),
+      iterations: 100000,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+async function encriptar(texto, pass) {
+  const key = await generarClave(pass);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+
+  const cifrado = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    new TextEncoder().encode(texto)
+  );
+
+  return {
+    iv: Array.from(iv),
+    data: Array.from(new Uint8Array(cifrado))
+  };
+}
+
+async function desencriptar(obj, pass) {
+  const key = await generarClave(pass);
+
+  const desc = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: new Uint8Array(obj.iv) },
+    key,
+    new Uint8Array(obj.data)
+  );
+
+  return new TextDecoder().decode(desc);
+}
+
+/* =========================
+   🏠 INICIO
+========================= */
+
+window.inicio = function() {
+  viewer.innerHTML = `
+    <div class="center">
+      <h1>SpyX Browser</h1>
+      <p>Explorador privado experimental</p>
+
+      <div class="card">
+        <b>Funciones:</b><br>
+        ✔ Buscador interno<br>
+        ✔ Sitios .spy<br>
+        ✔ Cifrado real<br>
+      </div>
+
+      <button onclick="listar()">Explorar sitios .spy</button>
+    </div>
+  `;
+};
+
+inicio();
+
+/* =========================
+   🔎 BUSQUEDA
+========================= */
+
 window.go = function() {
-  let url = document.getElementById("url").value.trim();
+  let q = document.getElementById("url").value.trim();
+  if (!q) return;
 
-  if (!url) return;
+  guardarHistorial(q);
 
-  if (url.endsWith(".spy")) {
-    cargarSpy(url);
+  if (q.endsWith(".spy")) {
+    cargarSpy(q);
+  } else {
+    buscar(q);
+  }
+};
+
+async function buscar(q) {
+  const snap = await getDocs(collection(db, "sites"));
+
+  let resultados = [];
+
+  snap.forEach(docu => {
+    const d = docu.data();
+    if (
+      d.nombre.toLowerCase().includes(q.toLowerCase()) ||
+      d.contenido.toLowerCase().includes(q.toLowerCase())
+    ) {
+      resultados.push(d.nombre);
+    }
+  });
+
+  if (resultados.length === 0) {
+    viewer.innerHTML = "<h2>No hay resultados</h2>";
     return;
   }
 
-  window.open("https://duckduckgo.com/?q=" + encodeURIComponent(url), "_blank");
-};
+  let html = "<h2>Resultados</h2>";
 
-/* 🕵️ CARGAR */
+  resultados.forEach(r => {
+    html += `<div class="link" onclick="abrir('${r}')">${r}</div>`;
+  });
+
+  viewer.innerHTML = html;
+}
+
+/* =========================
+   🕵️ SITIOS .SPY
+========================= */
+
 async function cargarSpy(nombre) {
   const snap = await getDocs(collection(db, "sites"));
 
   let encontrado = false;
 
   snap.forEach(docu => {
-    const data = docu.data();
+    const d = docu.data();
 
-    if (data.nombre === nombre) {
+    if (d.nombre === nombre) {
       viewer.innerHTML = `
-        <div class="box">
-
-          <div style="background:white; color:black; padding:10px;">
-            ${data.contenido}
-          </div>
-
-          <hr>
-
-          <textarea id="edit">${data.contenido}</textarea><br><br>
-
-          <button onclick="guardar('${docu.id}')">Guardar</button>
-          <button onclick="borrar('${docu.id}')">Eliminar</button>
-          <button onclick="volver()">Volver</button>
-
+        <div class="card" style="background:white;color:black;">
+          ${d.contenido}
         </div>
+
+        <textarea id="edit">${d.contenido}</textarea><br><br>
+
+        <button onclick="guardar('${docu.id}')">Guardar</button>
+        <button onclick="borrar('${docu.id}')">Eliminar</button>
       `;
       encontrado = true;
     }
@@ -159,64 +271,64 @@ async function cargarSpy(nombre) {
 
   if (!encontrado) {
     viewer.innerHTML = `
-      <div class="box">
-        <h2>No existe este sitio</h2>
-        <button onclick="abrirCrear()">Crear uno</button>
-      </div>
+      <h2>No existe</h2>
+      <button onclick="abrirCrear()">Crear</button>
     `;
   }
 }
 
-/* ➕ CREAR UI */
+/* =========================
+   ➕ CREAR
+========================= */
+
 window.abrirCrear = function() {
   viewer.innerHTML = `
-    <div class="box">
-      <h2>Crear sitio .spy</h2>
+    <h2>Crear sitio</h2>
 
-      <input id="name" placeholder="nombre.spy"><br><br>
-      <textarea id="content" placeholder="HTML del sitio"></textarea><br><br>
+    <input id="name" placeholder="nombre.spy"><br><br>
+    <textarea id="content"></textarea><br><br>
+    <input id="pass" placeholder="Contraseña (opcional)"><br><br>
 
-      <button onclick="crear()">Crear</button>
-      <button onclick="listar()">Ver sitios</button>
-    </div>
+    <button onclick="crear()">Crear</button>
   `;
 };
 
-/* 💾 CREAR */
 window.crear = async function() {
   const nombre = document.getElementById("name").value;
-  const contenido = document.getElementById("content").value;
-
-  if (!nombre || !contenido) {
-    alert("Completa todo");
-    return;
-  }
+  let contenido = document.getElementById("content").value;
+  const pass = document.getElementById("pass").value;
 
   if (!nombre.endsWith(".spy")) {
     alert("Debe terminar en .spy");
     return;
   }
 
+  if (pass) {
+    contenido = await encriptar(contenido, pass);
+  }
+
   await addDoc(collection(db, "sites"), {
     nombre,
-    contenido
+    contenido,
+    protegido: !!pass
   });
 
-  alert("Creado correctamente");
+  alert("Creado");
 };
 
-/* 📂 LISTAR */
+/* =========================
+   📂 LISTAR
+========================= */
+
 window.listar = async function() {
   const snap = await getDocs(collection(db, "sites"));
 
-  let html = "<div class='box'><h2>Sites</h2>";
+  let html = "<h2>Sites</h2>";
 
   snap.forEach(docu => {
     const d = docu.data();
-    html += `<p class="link" onclick="abrir('${d.nombre}')">${d.nombre}</p>`;
+    html += `<div class="link" onclick="abrir('${d.nombre}')">${d.nombre}</div>`;
   });
-
-  html += "<br><button onclick='volver()'>Volver</button></div>";
 
   viewer.innerHTML = html;
 };
@@ -226,7 +338,10 @@ window.abrir = function(nombre) {
   cargarSpy(nombre);
 };
 
-/* ✏️ GUARDAR */
+/* =========================
+   ✏️ EDITAR
+========================= */
+
 window.guardar = async function(id) {
   const texto = document.getElementById("edit").value;
 
@@ -237,20 +352,21 @@ window.guardar = async function(id) {
   alert("Guardado");
 };
 
-/* ❌ BORRAR */
 window.borrar = async function(id) {
   await deleteDoc(doc(db, "sites", id));
   alert("Eliminado");
-  volver();
+  inicio();
 };
 
-/* 🔙 VOLVER */
-window.volver = function() {
-  viewer.innerHTML = `
-    <h1>SpyX Browser</h1>
-    <p>Explorador privado experimental</p>
-  `;
-};
+/* =========================
+   📜 HISTORIAL
+========================= */
+
+function guardarHistorial(q) {
+  let h = JSON.parse(localStorage.getItem("historial") || "[]");
+  h.unshift(q);
+  localStorage.setItem("historial", JSON.stringify(h.slice(0, 10)));
+}
 
 </script>
 
