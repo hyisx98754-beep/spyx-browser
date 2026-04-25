@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SpyX Browser</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      background: #0a0a0a;
+      color: white;
+      font-family: Arial;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 50px;
+      letter-spacing: 3px;
+      color: #00ffcc;
+    }
+
+    input {
+      width: 60%;
+      padding: 15px;
+      border-radius: 30px;
+      border: none;
+      outline: none;
+      font-size: 16px;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      background: #00ffcc;
+      color: black;
+      font-weight: bold;
+    }
+
+    iframe {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: none;
+    }
+
+    #topbar {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      display: none;
+    }
+
+    #topbar button {
+      margin-right: 5px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>🕶️ SpyX</h1>
+
+<input type="text" id="busqueda" placeholder="Buscar o escribir URL">
+<button onclick="buscar()">Explorar</button>
+
+<div id="topbar">
+  <button onclick="volver()">⬅️</button>
+  <button onclick="inicio()">🏠</button>
+</div>
+
+<iframe id="visor"></iframe>
+
+<script>
+
+function buscar() {
+  let input = document.getElementById("busqueda").value;
+
+  if (!input.startsWith("http")) {
+    input = "https://duckduckgo.com/?q=" + encodeURIComponent(input);
+  }
+
+  document.getElementById("visor").src = input;
+  document.getElementById("visor").style.display = "block";
+
+  document.body.style.justifyContent = "flex-start";
+  document.querySelector("h1").style.display = "none";
+  document.getElementById("busqueda").style.display = "none";
+  document.querySelector("button").style.display = "none";
+
+  document.getElementById("topbar").style.display = "block";
+}
+
+function volver() {
+  document.getElementById("visor").contentWindow.history.back();
+}
+
+function inicio() {
+  location.reload();
+}
+
+</script>
+
+</body>
+</html>
