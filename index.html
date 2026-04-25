@@ -7,18 +7,18 @@
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
+      font-family: Arial;
       background: #0f172a;
       color: white;
     }
 
-    /* 🔝 TOP BAR */
+    /* TOP BAR */
     #topbar {
       display: flex;
-      align-items: center;
+      gap: 8px;
       padding: 10px;
       background: #020617;
-      gap: 10px;
+      align-items: center;
     }
 
     #url {
@@ -27,82 +27,81 @@
       border-radius: 20px;
       border: none;
       outline: none;
-      font-size: 15px;
     }
 
     button {
-      padding: 10px 15px;
+      padding: 10px 12px;
       border-radius: 10px;
       border: none;
       cursor: pointer;
       background: #22c55e;
-      color: black;
       font-weight: bold;
     }
 
     #createBtn {
       position: absolute;
       right: 10px;
-      top: 60px;
+      top: 55px;
       background: #3b82f6;
       color: white;
     }
 
-    /* 🧠 VIEWER */
     #viewer {
-      padding: 40px;
-      text-align: center;
-    }
-
-    .logo {
-      font-size: 40px;
-      font-weight: bold;
-      margin-bottom: 20px;
-    }
-
-    .searchBox {
-      width: 60%;
-      padding: 12px;
-      border-radius: 25px;
+      width: 100%;
+      height: 85vh;
       border: none;
-      font-size: 16px;
+      background: white;
     }
 
-    .result {
-      text-align: left;
-      margin-top: 20px;
+    #panel {
+      display: flex;
+      gap: 10px;
+      padding: 5px 10px;
+      background: #111827;
+      font-size: 12px;
+      overflow-x: auto;
     }
 
-    .link {
-      color: #38bdf8;
+    .tab {
+      background: #1f2937;
+      padding: 5px 10px;
+      border-radius: 8px;
       cursor: pointer;
     }
 
-    textarea {
-      width: 100%;
-      height: 200px;
+    #home {
+      text-align: center;
+      padding: 30px;
     }
 
+    .small {
+      font-size: 12px;
+      color: #aaa;
+    }
   </style>
 </head>
 
 <body>
 
-<!-- 🔝 BARRA -->
+<!-- TOP BAR -->
 <div id="topbar">
-  <input id="url" placeholder="Buscar o escribir (.spy)">
-  <button onclick="go()">Buscar</button>
+  <input id="url" placeholder="Search or URL (.spy supported)">
+  <button onclick="go()">Go</button>
 </div>
 
-<button id="createBtn" onclick="abrirCrear()">Create my own .spy site</button>
+<button id="createBtn" onclick="createSpy()">Create my own .spy site</button>
 
-<!-- 🧠 CONTENIDO -->
-<div id="viewer">
-  <div class="logo">SpyX Browser</div>
+<!-- TABS -->
+<div id="panel"></div>
 
-  <input class="searchBox" placeholder="Buscar en SpyX..." 
-         onkeydown="if(event.key==='Enter') go()">
+<!-- HOME -->
+<div id="home">
+  <h1>SpyX Browser</h1>
+  <p class="small">Experimental secure browser system</p>
 </div>
+
+<!-- VIEWER -->
+<iframe id="viewer"></iframe>
 
 <script type="module">
 
@@ -111,13 +110,10 @@ import {
   getFirestore,
   collection,
   addDoc,
-  getDocs,
-  doc,
-  updateDoc,
-  deleteDoc
+  getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE */
+/* FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyBjUx7G7Llqx6OGLcwRdixqyOBcXtN6f7A",
   authDomain: "spyx-browser.firebaseapp.com",
@@ -130,175 +126,113 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const viewer = document.getElementById("viewer");
+/* PROXY */
+const PROXY = "https://spyx-browser.onrender.com/proxy?url=";
 
-/* 🧠 NODOS (3 REALES EN CÓDIGO) */
-const nodes = [
-  {name: "nodeA", key: "k1"},
-  {name: "nodeB", key: "k2"},
-  {name: "nodeC", key: "k3"}
-];
+/* DATA */
+let tabs = [];
+let history = [];
+let favorites = [];
 
-/* 🔐 CIFRADO EN CAPAS (MEJORADO) */
-function encryptLayer(data, key) {
-  let result = "";
-  for (let i = 0; i < data.length; i++) {
-    result += String.fromCharCode(data.charCodeAt(i) ^ key.charCodeAt(0));
-  }
-  return btoa(result);
+/* SIMPLE ENCODE (NO FALSE SECURITY CLAIMS) */
+function encode(str) {
+  return btoa(unescape(encodeURIComponent(str)));
 }
 
-function decryptLayer(data, key) {
-  let decoded = atob(data);
-  let result = "";
-  for (let i = 0; i < decoded.length; i++) {
-    result += String.fromCharCode(decoded.charCodeAt(i) ^ key.charCodeAt(0));
-  }
-  return result;
+function decode(str) {
+  return decodeURIComponent(escape(atob(str)));
 }
 
-/* 🧅 SPY ROUTING */
-function spyEncrypt(data) {
-  let result = data;
-  nodes.forEach(n => {
-    result = encryptLayer(result, n.key);
-  });
-  return result;
-}
-
-function spyDecrypt(data) {
-  let result = data;
-  [...nodes].reverse().forEach(n => {
-    result = decryptLayer(result, n.key);
-  });
-  return result;
-}
-
-/* 🔍 BUSCAR */
+/* NAVIGATE */
 window.go = function() {
   let url = document.getElementById("url").value.trim();
-
   if (!url) return;
 
+  addHistory(url);
+
   if (url.endsWith(".spy")) {
-    cargarSpy(url);
+    loadSpy(url);
     return;
   }
 
-  // 🔐 cifrado simulado antes de buscar
-  const encrypted = spyEncrypt(url);
-  console.log("🔐 encrypted:", encrypted);
-
-  window.open("https://duckduckgo.com/?q=" + encodeURIComponent(url), "_blank");
+  load(PROXY + encodeURIComponent(url));
 };
 
-/* 🕵️ CARGAR .spy */
-async function cargarSpy(nombre) {
+/* LOAD NORMAL */
+function load(url) {
+  document.getElementById("viewer").src = url;
+  document.getElementById("home").style.display = "none";
+}
+
+/* LOAD SPY */
+async function loadSpy(name) {
   const snap = await getDocs(collection(db, "sites"));
 
-  let encontrado = false;
+  snap.forEach(d => {
+    let data = d.data();
 
-  snap.forEach(docu => {
-    const data = docu.data();
+    if (data.nombre === name) {
+      let content = decode(data.contenido);
 
-    if (data.nombre === nombre) {
-      const contenido = spyDecrypt(data.contenido);
-
-      viewer.innerHTML = `
-        <div style="background:white;color:black;padding:20px;">
-          ${contenido}
-        </div>
-
-        <hr>
-
-        <textarea id="edit">${contenido}</textarea><br><br>
-
-        <button onclick="guardar('${docu.id}')">Guardar</button>
-        <button onclick="borrar('${docu.id}')">Eliminar</button>
+      document.getElementById("viewer").srcdoc = `
+        <html>
+        <body style="font-family:Arial;padding:20px;">
+          ${content}
+        </body>
+        </html>
       `;
-
-      encontrado = true;
     }
   });
+}
 
-  if (!encontrado) {
-    viewer.innerHTML = `
-      <h2>No existe este sitio .spy</h2>
-      <button onclick="abrirCrear()">Crear uno</button>
-    `;
+/* HISTORY */
+function addHistory(url) {
+  history.push(url);
+  if (history.length > 20) history.shift();
+}
+
+/* FAVORITES */
+function addFav(url) {
+  if (!favorites.includes(url)) {
+    favorites.push(url);
   }
 }
 
-/* ➕ CREAR UI */
-window.abrirCrear = function() {
-  viewer.innerHTML = `
-    <h2>Crear sitio .spy</h2>
+/* CREATE SPY */
+window.createSpy = function() {
+  let name = prompt("Name:");
+  let content = prompt("Content:");
 
-    <input id="name" placeholder="nombre.spy"><br><br>
-    <textarea id="content"></textarea><br><br>
+  if (!name || !content) return;
 
-    <button onclick="crear()">Crear</button>
-    <button onclick="listar()">Ver sitios</button>
-  `;
-};
-
-/* 💾 CREAR */
-window.crear = async function() {
-  const nombre = document.getElementById("name").value;
-  const contenido = document.getElementById("content").value;
-
-  if (!nombre || !contenido) {
-    alert("Completa todo");
-    return;
-  }
-
-  const encrypted = spyEncrypt(contenido);
-
-  await addDoc(collection(db, "sites"), {
-    nombre,
-    contenido: encrypted
+  addDoc(collection(db, "sites"), {
+    nombre: name,
+    contenido: encode(content)
   });
 
-  alert("Sitio creado con cifrado spy 🔐");
+  alert("Spy site created");
 };
 
-/* 📂 LISTAR */
-window.listar = async function() {
-  const snap = await getDocs(collection(db, "sites"));
+/* TABS SYSTEM (SIMULATED) */
+function addTab(url) {
+  tabs.push(url);
 
-  let html = "<h2>Sites</h2>";
+  let tab = document.createElement("div");
+  tab.className = "tab";
+  tab.innerText = url.slice(0, 20);
 
-  snap.forEach(docu => {
-    const d = docu.data();
-    html += `<p class="link" onclick="abrir('${d.nombre}')">${d.nombre}</p>`;
-  });
+  tab.onclick = () => {
+    document.getElementById("url").value = url;
+    go();
+  };
 
-  viewer.innerHTML = html;
-};
+  document.getElementById("panel").appendChild(tab);
+}
 
-window.abrir = function(nombre) {
-  document.getElementById("url").value = nombre;
-  cargarSpy(nombre);
-};
-
-/* ✏️ GUARDAR */
-window.guardar = async function(id) {
-  const texto = document.getElementById("edit").value;
-  const encrypted = spyEncrypt(texto);
-
-  await updateDoc(doc(db, "sites", id), {
-    contenido: encrypted
-  });
-
-  alert("Guardado cifrado 🔐");
-};
-
-/* ❌ BORRAR */
-window.borrar = async function(id) {
-  await deleteDoc(doc(db, "sites", id));
-  alert("Eliminado");
-  abrirCrear();
-};
+/* ENTER KEY SUPPORT */
+document.getElementById("url").addEventListener("keydown", e => {
+  if (e.key === "Enter") go();
+});
 
 </script>
 
