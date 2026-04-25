@@ -290,7 +290,7 @@ window.openPublic = async function () {
   snap.forEach(d => {
     let data = d.data();
 
-    if (data.public === true) {
+   if (data.public) {
       sites.push({
         id: d.id,
         nombre: data.nombre,
@@ -327,21 +327,13 @@ window.openPublic = async function () {
 };
 
 /* LIKE (FIXED) */
+import { increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 window.likeSpy = async function(id) {
   const ref = doc(db, "sites", id);
 
-  const snap = await getDocs(collection(db, "sites"));
-
-  let currentLikes = 0;
-
-  snap.forEach(d => {
-    if (d.id === id) {
-      currentLikes = d.data().likes || 0;
-    }
-  });
-
   await updateDoc(ref, {
-    likes: currentLikes + 1
+    likes: increment(1)
   });
 
   openPublic();
