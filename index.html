@@ -62,13 +62,19 @@
       font-size: 32px;
       margin-bottom: 10px;
     }
+
+    .status {
+      font-size: 12px;
+      opacity: 0.7;
+      margin-top: 10px;
+    }
   </style>
 </head>
 
 <body>
 
 <div id="topbar">
-  <input id="url" placeholder="Search or enter URL or .spy">
+  <input id="url" placeholder="Search or URL or .spy">
   <button onclick="go()">Go</button>
 </div>
 
@@ -76,7 +82,8 @@
 
 <div id="home">
   <div class="logo">SpyX Browser</div>
-  <p>Experimental distributed browser system</p>
+  <p>Stable hybrid browser system</p>
+  <div class="status" id="status">Ready</div>
 </div>
 
 <iframe id="viewer"></iframe>
@@ -91,7 +98,7 @@ import {
   getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE */
+/* FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyBjUx7G7Llqx6OGLcwRdixqyOBcXtN6f7A",
   authDomain: "spyx-browser.firebaseapp.com",
@@ -104,41 +111,64 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🌐 GATEWAY */
+/* GATEWAY */
 const NODE_PROXY = "https://spyx-browser.onrender.com/proxy?url=";
 
-/* UI CONTROL */
+/* STATUS */
+function setStatus(msg) {
+  document.getElementById("status").innerText = msg;
+}
+
+/* UI */
 function showBrowser() {
   document.getElementById("home").style.display = "none";
   document.getElementById("viewer").style.display = "block";
 }
 
-/* 🚀 NAVIGATION */
+/* MAIN NAV */
 window.go = function () {
-  let url = document.getElementById("url").value.trim();
-  if (!url) return;
+  let input = document.getElementById("url").value.trim();
+  if (!input) return;
 
   showBrowser();
 
-  /* 🧠 .spy SYSTEM */
-  if (url.endsWith(".spy")) {
-    loadSpy(url);
+  /* .spy system */
+  if (input.endsWith(".spy")) {
+    loadSpy(input);
     return;
   }
 
-  /* 🌐 NORMAL WEB VIA GATEWAY */
+  /* URL detection */
+  if (input.includes(".") && !input.includes(" ")) {
+    setStatus("Loading site...");
+    loadSite(input);
+    return;
+  }
+
+  /* SEARCH fallback */
+  setStatus("Searching...");
   document.getElementById("viewer").src =
-    NODE_PROXY + encodeURIComponent(url);
+    "https://duckduckgo.com/?q=" + encodeURIComponent(input);
 };
 
-/* 🕵️ LOAD .spy */
+/* LOAD WEB VIA PROXY */
+function loadSite(url) {
+  try {
+    document.getElementById("viewer").src =
+      NODE_PROXY + encodeURIComponent(url);
+  } catch (e) {
+    setStatus("Error loading site");
+  }
+}
+
+/* LOAD .spy */
 async function loadSpy(name) {
   const snap = await getDocs(collection(db, "sites"));
 
   let found = false;
 
-  snap.forEach(docu => {
-    const data = docu.data();
+  snap.forEach(d => {
+    let data = d.data();
 
     if (data.nombre === name) {
       let html = atob(data.contenido);
@@ -157,18 +187,18 @@ async function loadSpy(name) {
 
   if (!found) {
     document.getElementById("viewer").srcdoc =
-      "<h2>Site not found</h2>";
+      "<h2>.spy not found</h2>";
   }
 }
 
-/* ➕ CREATE UI */
+/* CREATE */
 window.openCreate = function () {
   showBrowser();
 
   document.getElementById("viewer").srcdoc = `
     <html>
     <body style="font-family:Arial;background:#0f172a;color:white;padding:20px;">
-      <h2>Create .spy site</h2>
+      <h2>Create .spy</h2>
 
       <input id="name" placeholder="name.spy" style="width:100%;padding:10px;"><br><br>
       <textarea id="content" style="width:100%;height:200px;"></textarea><br><br>
@@ -179,7 +209,7 @@ window.openCreate = function () {
   `;
 };
 
-/* 💾 SAVE .spy */
+/* SAVE */
 window.saveSpy = async function () {
   let doc = document.getElementById("viewer").contentWindow.document;
 
@@ -196,7 +226,7 @@ window.saveSpy = async function () {
     contenido: btoa(content)
   });
 
-  alert("Saved .spy site");
+  alert("Saved");
 };
 
 </script>
