@@ -12,7 +12,6 @@
       color: white;
     }
 
-    /* TOP BAR */
     #topbar {
       display: flex;
       gap: 8px;
@@ -46,61 +45,46 @@
       color: white;
     }
 
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
     #viewer {
-      width: 100%;
-      height: 85vh;
+      flex: 1;
       border: none;
       background: white;
-    }
-
-    #panel {
-      display: flex;
-      gap: 10px;
-      padding: 5px 10px;
-      background: #111827;
-      font-size: 12px;
-      overflow-x: auto;
-    }
-
-    .tab {
-      background: #1f2937;
-      padding: 5px 10px;
-      border-radius: 8px;
-      cursor: pointer;
+      display: none;
     }
 
     #home {
+      padding: 40px;
       text-align: center;
-      padding: 30px;
     }
 
-    .small {
-      font-size: 12px;
-      color: #aaa;
+    .hidden {
+      display: none;
     }
   </style>
 </head>
 
 <body>
 
-<!-- TOP BAR -->
 <div id="topbar">
-  <input id="url" placeholder="Search or URL (.spy supported)">
+  <input id="url" placeholder="Search or enter .spy or URL">
   <button onclick="go()">Go</button>
 </div>
 
-<button id="createBtn" onclick="createSpy()">Create my own .spy site</button>
+<button id="createBtn" onclick="openCreate()">Create .spy</button>
 
-<!-- TABS -->
-<div id="panel"></div>
-
-<!-- HOME -->
 <div id="home">
-  <h1>SpyX Browser</h1>
-  <p class="small">Experimental secure browser system</p>
+  <h1>🕵️ SpyX Browser</h1>
+  <p>Secure experimental browser system</p>
+
+  <button onclick="openCreate()">Create my own .spy site</button>
 </div>
 
-<!-- VIEWER -->
 <iframe id="viewer"></iframe>
 
 <script type="module">
@@ -127,42 +111,34 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* PROXY */
-const PROXY = "https://spyx-browser.onrender.com/proxy?url=";
+const NODE_PROXY = "https://spyx-browser.onrender.com/proxy?url=";
 
-/* DATA */
-let tabs = [];
-let history = [];
-let favorites = [];
-
-/* SIMPLE ENCODE (NO FALSE SECURITY CLAIMS) */
-function encode(str) {
-  return btoa(unescape(encodeURIComponent(str)));
+/* VIEW */
+function showBrowser() {
+  document.getElementById("viewer").style.display = "block";
+  document.getElementById("home").style.display = "none";
 }
 
-function decode(str) {
-  return decodeURIComponent(escape(atob(str)));
-}
-
-/* NAVIGATE */
-window.go = function() {
+/* NAVIGATION */
+window.go = function () {
   let url = document.getElementById("url").value.trim();
   if (!url) return;
 
-  addHistory(url);
+  showBrowser();
+
+  if (url === "createspyweb.spy") {
+    openCreate();
+    return;
+  }
 
   if (url.endsWith(".spy")) {
     loadSpy(url);
     return;
   }
 
-  load(PROXY + encodeURIComponent(url));
+  document.getElementById("viewer").src =
+    NODE_PROXY + encodeURIComponent(url);
 };
-
-/* LOAD NORMAL */
-function load(url) {
-  document.getElementById("viewer").src = url;
-  document.getElementById("home").style.display = "none";
-}
 
 /* LOAD SPY */
 async function loadSpy(name) {
@@ -172,7 +148,7 @@ async function loadSpy(name) {
     let data = d.data();
 
     if (data.nombre === name) {
-      let content = decode(data.contenido);
+      let content = atob(data.contenido);
 
       document.getElementById("viewer").srcdoc = `
         <html>
@@ -185,54 +161,43 @@ async function loadSpy(name) {
   });
 }
 
-/* HISTORY */
-function addHistory(url) {
-  history.push(url);
-  if (history.length > 20) history.shift();
-}
+/* CREATE PAGE */
+window.openCreate = function () {
+  showBrowser();
 
-/* FAVORITES */
-function addFav(url) {
-  if (!favorites.includes(url)) {
-    favorites.push(url);
-  }
-}
+  document.getElementById("viewer").srcdoc = `
+    <html>
+    <body style="font-family:Arial;background:#0f172a;color:white;padding:20px;">
+      <h2>🕵️ Create .spy site</h2>
 
-/* CREATE SPY */
-window.createSpy = function() {
-  let name = prompt("Name:");
-  let content = prompt("Content:");
+      <input id="name" placeholder="name.spy" style="width:100%;padding:10px;"><br><br>
+      <textarea id="content" style="width:100%;height:200px;"></textarea><br><br>
 
-  if (!name || !content) return;
-
-  addDoc(collection(db, "sites"), {
-    nombre: name,
-    contenido: encode(content)
-  });
-
-  alert("Spy site created");
+      <button onclick="parent.saveSpy()">Save</button>
+    </body>
+    </html>
+  `;
 };
 
-/* TABS SYSTEM (SIMULATED) */
-function addTab(url) {
-  tabs.push(url);
+/* SAVE SPY */
+window.saveSpy = async function () {
+  let doc = document.getElementById("viewer").contentWindow.document;
 
-  let tab = document.createElement("div");
-  tab.className = "tab";
-  tab.innerText = url.slice(0, 20);
+  let name = doc.getElementById("name").value;
+  let content = doc.getElementById("content").value;
 
-  tab.onclick = () => {
-    document.getElementById("url").value = url;
-    go();
-  };
+  if (!name.endsWith(".spy")) {
+    alert("Must end in .spy");
+    return;
+  }
 
-  document.getElementById("panel").appendChild(tab);
-}
+  await addDoc(collection(db, "sites"), {
+    nombre: name,
+    contenido: btoa(content)
+  });
 
-/* ENTER KEY SUPPORT */
-document.getElementById("url").addEventListener("keydown", e => {
-  if (e.key === "Enter") go();
-});
+  alert("Saved .spy site");
+};
 
 </script>
 
