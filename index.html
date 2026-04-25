@@ -1,136 +1,157 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>SpyX Browser</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>SpyX Browser</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial;
-      background: #111;
-      color: white;
-    }
+<style>
+body {
+  margin:0;
+  font-family:Arial;
+  background:#0f172a;
+  color:white;
+  text-align:center;
+}
 
-    #tabs {
-      display: flex;
-      background: #000;
-      padding: 5px;
-    }
+.topbar {
+  display:flex;
+  padding:10px;
+  background:#020617;
+}
 
-    .tab {
-      padding: 5px 10px;
-      background: #222;
-      margin-right: 5px;
-      cursor: pointer;
-      border-radius: 5px;
-    }
+input {
+  flex:1;
+  padding:10px;
+  border:none;
+  outline:none;
+}
 
-    .active {
-      background: #00aa88;
-    }
+button {
+  padding:10px;
+  background:#22c55e;
+  border:none;
+  cursor:pointer;
+}
 
-    #topbar {
-      display: flex;
-      padding: 10px;
-      background: #1a1a1a;
-      gap: 5px;
-    }
+.box {
+  margin-top:40px;
+}
 
-    input {
-      flex: 1;
-      padding: 8px;
-      border: none;
-      border-radius: 5px;
-    }
-
-    button {
-      padding: 8px;
-      border: none;
-      border-radius: 5px;
-      background: #333;
-      color: white;
-      cursor: pointer;
-    }
-  </style>
+textarea {
+  width:80%;
+  height:120px;
+}
+</style>
 </head>
 
 <body>
 
-<div id="tabs"></div>
+<div class="topbar">
+  <input id="input" placeholder="Escribe mensaje o URL...">
+  <button onclick="cifrar()">Cifrar</button>
+  <button onclick="descifrar()">Descifrar</button>
+</div>
 
-<div id="topbar">
-  <button onclick="volver()">⬅️</button>
-  <button onclick="adelante()">➡️</button>
-  <button onclick="recargar()">🔄</button>
-
-  <input id="url" placeholder="Buscar o URL">
-
-  <button onclick="ir()">Ir</button>
-  <button onclick="nuevaTab()">➕</button>
+<div class="box">
+  <h2>🔐 SpyX Encryption</h2>
+  <pre id="resultado"></pre>
 </div>
 
 <script>
+let claves = [];
 
-let pestañas = [];
-let actual = 0;
-
-/* nueva pestaña */
-function nuevaTab() {
-  pestañas.push("https://duckduckgo.com");
-  actual = pestañas.length - 1;
-  renderTabs();
+/* 🔑 Generar clave */
+async function generarClave() {
+  return await crypto.subtle.generateKey(
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["encrypt", "decrypt"]
+  );
 }
 
-/* render tabs */
-function renderTabs() {
-  const cont = document.getElementById("tabs");
-  cont.innerHTML = "";
+/* 🔐 Cifrar */
+async function cifrarTexto(texto, clave) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(texto);
 
-  pestañas.forEach((url, i) => {
-    const tab = document.createElement("div");
-    tab.className = "tab " + (i === actual ? "active" : "");
-    tab.innerText = "Tab " + (i + 1);
+  const cifrado = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    clave,
+    encoded
+  );
 
-    tab.onclick = () => {
-      actual = i;
-      renderTabs();
-    };
-
-    cont.appendChild(tab);
-  });
+  return {
+    data: Array.from(new Uint8Array(cifrado)),
+    iv: Array.from(iv)
+  };
 }
 
-/* IR (CLAVE) */
-function ir() {
-  let input = document.getElementById("url").value;
+/* 🔓 Descifrar */
+async function descifrarTexto(obj, clave) {
+  const data = new Uint8Array(obj.data);
+  const iv = new Uint8Array(obj.iv);
 
-  if (!input.startsWith("http")) {
-    input = "https://duckduckgo.com/?q=" + encodeURIComponent(input);
+  const descifrado = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    clave,
+    data
+  );
+
+  return new TextDecoder().decode(descifrado);
+}
+
+/* 🔐 CIFRADO EN CAPAS */
+async function cifrar() {
+  let texto = document.getElementById("input").value;
+  claves = [];
+
+  for (let i = 0; i < 3; i++) {
+    const clave = await generarClave();
+    claves.push(clave);
+
+    const resultado = await cifrarTexto(texto, clave);
+    texto = JSON.stringify(resultado);
   }
 
-  pestañas[actual] = input;
+  // 🔥 generar link tipo .spy (simulado)
+  const link = "spy://" + btoa(texto);
 
-  // 🔥 abrir real (NO iframe)
-  window.location.href = input;
+  document.getElementById("resultado").textContent =
+    "🔐 Cifrado en capas:\n\n" + texto +
+    "\n\n🌐 Link SpyX:\n" + link;
 }
 
-/* navegación real (limitada en web) */
-function volver() {
-  history.back();
+/* 🔓 DESCIFRAR */
+async function descifrar() {
+  let texto = document.getElementById("input").value;
+
+  try {
+    // si es link spy
+    if (texto.startsWith("spy://")) {
+      texto = atob(texto.replace("spy://", ""));
+    }
+
+    let obj = JSON.parse(texto);
+
+    for (let i = claves.length - 1; i >= 0; i--) {
+      const desc = await descifrarTexto(obj, claves[i]);
+
+      try {
+        obj = JSON.parse(desc);
+      } catch {
+        obj = desc;
+      }
+    }
+
+    document.getElementById("resultado").textContent =
+      "🔓 Descifrado:\n\n" + obj;
+
+  } catch (e) {
+    document.getElementById("resultado").textContent =
+      "❌ Error al descifrar";
+  }
 }
-
-function adelante() {
-  history.forward();
-}
-
-function recargar() {
-  location.reload();
-}
-
-/* iniciar */
-nuevaTab();
-
 </script>
 
 </body>
