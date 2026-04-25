@@ -5,13 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
+    #tabs {
+  display: flex;
+  background: #111;
+  padding: 5px;
+  gap: 5px;
+  overflow-x: auto;
+}
+
+.tab {
+  background: #222;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.tab.active {
+  background: #3b82f6;
+}
+
+.tab span {
+  margin-left: 8px;
+  color: red;
+  cursor: pointer;
+}
+
+#topbar {
+  border-top: 1px solid #444;
+}
+
+button.nav {
+  background: #374151;
+}
     body {
       margin: 0;
       font-family: Arial;
       background: #0f172a;
       color: white;
     }
-
     #topbar {
       display: flex;
       gap: 8px;
@@ -79,16 +110,18 @@
 </head>
 
 <body>
-
+<div id="tabs"></div>
 <div id="topbar">
+  <button class="nav" onclick="back()">⬅️</button>
+  <button class="nav" onclick="forward()">➡️</button>
+  <button class="nav" onclick="reload()">🔄</button>
+
   <input id="url" placeholder="Search / URL / .spy">
 
   <button onclick="go()">Go</button>
   <button onclick="openWiki()">Wiki</button>
-  <button onclick="openDirect()">URL</button>
   <button onclick="openDuck()">Duck</button>
-  <button onclick="openManager()">My .spy</button>
-  <button onclick="openPublic()">Public</button>
+  <button onclick="openManager()">My</button>
 </div>
 
 <div id="home">
@@ -130,7 +163,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
+const url = document.getElementById("url");
+const viewer = document.getElementById("viewer");
 const NODE_PROXY = "https://spyx-browser.onrender.com/proxy?url=";
 
 /* UI */
@@ -157,9 +191,15 @@ window.openDirect = function () {
   if (!u.startsWith("http")) u = "https://" + u;
 
   showBrowser();
+
+  let tab = tabs[currentTab];
+
+  tab.history = tab.history.slice(0, tab.index + 1);
+  tab.history.push(u);
+  tab.index++;
+
   viewer.src = NODE_PROXY + encodeURIComponent(u);
 };
-
 /* WIKI */
 window.openWiki = function () {
   let q = url.value.trim();
@@ -273,7 +313,76 @@ window.openQuick = function () {
   go();
 };
 
-</script>
 
+  let tabs = [];
+let currentTab = 0;
+
+function newTab(urlValue = "") {
+  tabs.push({
+    history: [],
+    index: -1
+  });
+  currentTab = tabs.length - 1;
+  renderTabs();
+
+  if (urlValue) {
+    url.value = urlValue;
+    go();
+  }
+}
+
+function closeTab(i) {
+  tabs.splice(i, 1);
+  if (tabs.length === 0) newTab();
+  currentTab = Math.max(0, i - 1);
+  renderTabs();
+}
+
+function renderTabs() {
+  let html = "";
+
+  tabs.forEach((t, i) => {
+    html += `
+      <div class="tab ${i === currentTab ? "active" : ""}"
+           onclick="switchTab(${i})">
+        Tab ${i + 1}
+        <span onclick="event.stopPropagation(); closeTab(${i})">✖</span>
+      </div>
+    `;
+  });
+
+  html += `<div class="tab" onclick="newTab()">➕</div>`;
+
+  document.getElementById("tabs").innerHTML = html;
+}
+
+function switchTab(i) {
+  currentTab = i;
+  renderTabs();
+}
+  window.back = function () {
+  let tab = tabs[currentTab];
+  if (tab.index > 0) {
+    tab.index--;
+    viewer.src = NODE_PROXY + encodeURIComponent(tab.history[tab.index]);
+  }
+};
+
+window.forward = function () {
+  let tab = tabs[currentTab];
+  if (tab.index < tab.history.length - 1) {
+    tab.index++;
+    viewer.src = NODE_PROXY + encodeURIComponent(tab.history[tab.index]);
+  }
+};
+
+window.reload = function () {
+  let tab = tabs[currentTab];
+  if (tab.history[tab.index]) {
+    viewer.src = NODE_PROXY + encodeURIComponent(tab.history[tab.index]);
+  }
+};
+                  newTab();
+</script>
 </body>
 </html>
